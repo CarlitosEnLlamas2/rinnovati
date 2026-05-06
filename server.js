@@ -20,6 +20,17 @@ const BOLD_SECRET_KEY = process.env.BOLD_SECRET_KEY;
 const BOLD_PUBLIC_KEY = process.env.BOLD_PUBLIC_KEY;
 const IS_SANDBOX      = process.env.BOLD_ENV !== 'production';
 
+// ── Config Telegram ──────────────────────────
+const TELEGRAM_TOKEN    = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
+const TG_API            = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
+
+// Mapa en memoria: telegram_msg_id → sessionId (para rutar replies)
+const msgToSession  = {};
+// Clientes SSE activos: sessionId → [res, ...]
+const chatClients   = {};
+let   tgLastUpdate  = 0;
+
 // Bold URLs
 const BOLD_BASE = IS_SANDBOX
   ? 'https://checkout.bold.co'          // sandbox usa misma URL, cambia solo la key
@@ -175,14 +186,131 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ============================================
+// CHAT DE SOPORTE — TELEGRAM
+// ============================================
+
+// POST /api/chat/send  — visitante envía mensaje
+app.post('/api/chat/send', async (req, res) => {
+  const { sessionId, text, visitorName } = req.body;
+  if (!sessionId || !text) {
+    return res.status(400).json({ ok: false, error: 'Faltan campos' });
+  }
+  if (!TELEGRAM_TOKEN || !TELEGRAM_ADMIN_ID) {
+    return res.status(503).json({ ok: false, error: 'Chat no configurado en servidor' });
+  }
+
+  try {
+    const axios = require('axios');
+    const message =
+      `💬 *Chat Web — Rinnovati*\n` +
+      `👤 *${visitorName || 'Visitante'}*\n` +
+      `🆔 \`${sessionId.slice(0, 8)}\`\n\n` +
+      `${text}\n\n` +
+      `_Responde a este mensaje en Telegram para contestarle._`;
+
+    const tgRes = await axios.post(`${TG_API}/sendMessage`, {
+      chat_id:    TELEGRAM_ADMIN_ID,
+      text:       message,
+      parse_mode: 'Markdown',
+    });
+
+    // Guardar relación telegram_msg_id → sessionId
+    const tgMsgId = tgRes.data.result.message_id;
+    msgToSession[tgMsgId] = sessionId;
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[CHAT send]', err.message);
+    res.status(500).json({ ok: false, error: 'Error al enviar mensaje' });
+  }
+});
+
+// GET /api/chat/updates?sessionId=XXX  — SSE: recibir replies del admin
+app.get('/api/chat/updates', (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).end();
+
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.flushHeaders();
+
+  // Confirmar conexión
+  res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
+
+  if (!chatClients[sessionId]) chatClients[sessionId] = [];
+  chatClients[sessionId].push(res);
+
+  // Limpiar al desconectar
+  req.on('close', () => {
+    chatClients[sessionId] = (chatClients[sessionId] || []).filter(r => r !== res);
+  });
+});
+
+// GET /api/chat/admin-id  — ayuda al admin a encontrar su chat ID
+app.get('/api/chat/admin-id', async (req, res) => {
+  if (!TELEGRAM_TOKEN) return res.json({ ok: false, error: 'Token no configurado' });
+  try {
+    const axios  = require('axios');
+    const result = await axios.get(`${TG_API}/getUpdates?limit=20`);
+    const chats  = [];
+    (result.data.result || []).forEach(u => {
+      const chat = u.message?.chat;
+      if (chat && !chats.find(c => c.id === chat.id)) {
+        chats.push({ id: chat.id, name: chat.first_name || chat.title || 'Sin nombre', type: chat.type });
+      }
+    });
+    res.json({ ok: true, chats, hint: 'Copia el "id" que corresponde a tu cuenta y ponlo en TELEGRAM_ADMIN_CHAT_ID del .env' });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── Polling de Telegram — rutear replies al visitante ──
+async function pollTelegram() {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_ADMIN_ID) return;
+  try {
+    const axios  = require('axios');
+    const result = await axios.get(
+      `${TG_API}/getUpdates?offset=${tgLastUpdate + 1}&timeout=3&allowed_updates=["message"]`
+    );
+    const updates = result.data.result || [];
+
+    for (const update of updates) {
+      tgLastUpdate = update.update_id;
+      const msg = update.message;
+
+      // Solo procesar si el admin respondió usando "Reply" de Telegram
+      if (msg && msg.text && msg.reply_to_message) {
+        const originalId = msg.reply_to_message.message_id;
+        const sessionId  = msgToSession[originalId];
+
+        if (sessionId && chatClients[sessionId]) {
+          const payload = JSON.stringify({ type: 'reply', text: msg.text });
+          chatClients[sessionId].forEach(r => {
+            try { r.write(`data: ${payload}\n\n`); } catch (_) {}
+          });
+        }
+      }
+    }
+  } catch (_) { /* reintento silencioso */ }
+
+  setTimeout(pollTelegram, 2000);
+}
+
+pollTelegram();
+
 // ── Iniciar servidor ─────────────────────────
 app.listen(PORT, () => {
+  const hostDisplay = process.env.PORT ? 'Puerto del Servidor' : `http://localhost:${PORT}`;
+  
   console.log('');
   console.log('╔═══════════════════════════════════════╗');
   console.log('║   RINNOVATI INSTITUTE — PAGOS BOLD    ║');
   console.log('╠═══════════════════════════════════════╣');
-  console.log(`║  Servidor:  http://localhost:${PORT}       ║`);
-  console.log(`║  Ambiente:  ${IS_SANDBOX ? 'SANDBOX (pruebas)    ' : 'PRODUCCIÓN          '}  ║`);
+  console.log(`║  Servidor:  ${hostDisplay.padEnd(25)} ║`);
+  console.log(`║  Ambiente:  ${(IS_SANDBOX ? 'SANDBOX' : 'PRODUCCIÓN').padEnd(25)} ║`);
   console.log('╚═══════════════════════════════════════╝');
   console.log('');
 });

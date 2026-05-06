@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pago procesado — Rinnovati Institute</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#04040A;color:#fff;
+    font-family:'Inter',sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;text-align:center;
+  }
+  .wrap{padding:40px 24px}
+  .spinner{
+    width:44px;height:44px;
+    border:3px solid rgba(201,168,76,.25);
+    border-top-color:#C9A84C;
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+    margin:0 auto 20px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  p{color:#888;font-size:14px;line-height:1.6}
+  .logo{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:#C9A84C;margin-bottom:28px;opacity:.7;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Rinnovati Institute</div>
+  <div class="spinner"></div>
+  <p>Confirmando su pago…</p>
+</div>
+<script>
+(function(){
+  var p = new URLSearchParams(window.location.search);
+  var orderId = p.get('orderId') || p.get('order_id') || p.get('order') || '';
+
+  // Si estamos dentro de un iframe, notificar a la página padre
+  try {
+    window.parent.postMessage({ type: 'BOLD_SUCCESS', orderId: orderId }, '*');
+  } catch(e){}
+
+  // Si se abrió como ventana principal (redirección directa), volver al registro con flag
+  if(window.self === window.top){
+    var back = '/registro.html?paid=1' +
+      (orderId ? '&orderId=' + encodeURIComponent(orderId) : '');
+    setTimeout(function(){ window.location.href = back; }, 800);
+  }
+})();
+</script>
+</body>
+</html>
