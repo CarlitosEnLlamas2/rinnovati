@@ -3,7 +3,10 @@
     "allow": [
       "Bash(Get-Content \"C:\\\\Users\\\\pc\\\\Downloads\\\\rinnovati-bold\\\\rinnovati-bold\\\\public\\\\index.html\")",
       "Bash(Select-Object -First 80)",
-      "Bash(Out-String)"
+      "Bash(Out-String)",
+      "Bash(node -e ' *)",
+      "Bash(node server.js)",
+      "Bash(curl -s -X POST http://localhost:3000/api/ai-chat -H \"Content-Type: application/json\" -d \"{\\\\\"history\\\\\":[],\\\\\"message\\\\\":\\\\\"¿Qué incluye la masterclass de PDRN?\\\\\"}\")"
     ]
   }
 }

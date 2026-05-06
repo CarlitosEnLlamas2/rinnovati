@@ -7,6 +7,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,16 +21,72 @@ const BOLD_SECRET_KEY = process.env.BOLD_SECRET_KEY;
 const BOLD_PUBLIC_KEY = process.env.BOLD_PUBLIC_KEY;
 const IS_SANDBOX      = process.env.BOLD_ENV !== 'production';
 
-// ── Config Telegram ──────────────────────────
-const TELEGRAM_TOKEN    = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
-const TG_API            = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
+// ── Config Gemini ─────────────────────────────
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL   = 'gemini-2.0-flash';
+const GEMINI_BASE    = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-// Mapa en memoria: telegram_msg_id → sessionId (para rutar replies)
-const msgToSession  = {};
-// Clientes SSE activos: sessionId → [res, ...]
-const chatClients   = {};
-let   tgLastUpdate  = 0;
+const GEMINI_SYSTEM_PROMPT = `Eres la asistente virtual de Rinnovati Institute, especializada en la Masterclass Técnica PDRN de Salmón. Responde siempre en español, de forma profesional y cálida. Tu objetivo es resolver dudas de médicos y profesionales de la salud sobre el programa y orientarlos hacia la inscripción.
+
+SOBRE EL PROGRAMA:
+- Nombre: Masterclass Técnica PDRN de Salmón
+- Empresa: Rinnovati Institute S.A.S. — Medellín, Colombia
+- Sitio web: www.rinnovatinstitute.com
+- Formato: Sesión privada online de 3 horas, 100% en vivo.
+- No hay grabaciones — la filosofía se basa en el debate en vivo y la interacción real
+
+¿QUÉ ES PDRN?
+Los polinucleótidos (PDRN) son moléculas activas que reparan el tejido desde el ADN. Se usan en medicina regenerativa y tratamientos estéticos de alto ticket. La sesión cubre su farmacodinámica completa: cómo actúa, argumentos científicos para justificar resultados superiores ante los pacientes.
+
+PRECIO:
+- USD 97 (precio de lanzamiento, fase piloto)
+- Precio regular: USD 120
+- También disponible en pesos colombianos: lo equivalente en pesos segun la tasa del dia.
+
+QUÉ INCLUYE:
+1. Sesión online privada de 3 horas 100% en vivo con la especialista
+2. Mapas de Aplicación Médica (rostro, zona periorbitaria, cuello) — protocolos visuales listos para sala
+3. Algoritmos de Dosificación por crono envejecimiento del paciente — sin margen para improvisación
+4. Certificación oficial de Rinnovati Institute S.A.S. con validez legal y académica
+5. Acceso a debate clínico en tiempo real con la especialista — resuelva casos reales de su práctica
+6. Validación de cédula profesional para garantizar el rigor médico de la sala
+
+FECHAS DISPONIBLES (ciclo actual):
+- Mayo 17, 2025 — 2 cupos disponibles
+- Mayo 24, 2025 — 4 cupos disponibles
+- Junio 5, 2025 — 4 cupos disponibles
+Solo 4 fechas al mes para garantizar calidad de mentoría personalizada.
+
+PARA QUIÉN ES:
+- Médicos y profesionales de la salud certificados
+- Aplica tanto si ya trabaja con polinucleótidos como si parte desde cero
+- Se requiere validación de cédula profesional
+
+LO QUE NO ES:
+- No es un webinar masivo — sala pequeña para profundidad real
+- No es contenido pregrabado — cada sesión es única según los participantes
+- No es para cualquier perfil — filtro estricto por cédula profesional
+
+PREGUNTAS FRECUENTES:
+P: ¿Necesito experiencia previa con PDRN?
+R: No. Está diseñado tanto para quienes parten desde cero como para quienes ya trabajan con polinucleótidos.
+
+P: ¿Cómo se valida mi cédula profesional?
+R: Tras el pago, recibirá un formulario para adjuntar su documento de identificación profesional. El equipo lo valida en máximo 24 horas hábiles.
+
+P: ¿La sesión queda grabada?
+R: No. La filosofía es la interacción en vivo. No se comparten grabaciones para proteger la privacidad del debate clínico.
+
+P: ¿Cuándo recibo la certificación?
+R: La certificación digital se envía en máximo 5 días hábiles posteriores a la sesión.
+
+P: ¿Puedo cambiar mi fecha?
+R: Sí, con al menos 48 horas de anticipación, sujeto a disponibilidad en otras fechas del ciclo actual.
+
+CÓMO INSCRIBIRSE:
+El usuario selecciona una fecha → completa el formulario (nombre, email, teléfono, cédula) → procesa el pago → recibe confirmación. Si alguien quiere inscribirse, indícale que haga clic en "Ver Fechas y Postular" o "Asegurar mi Acceso Técnico" en la página.
+
+Sé concisa. Usa bullet points cuando ayude a la claridad. No inventes información que no esté aquí. Si preguntan algo que no sabes, sugiere contactar directamente a www.rinnovatinstitute.com.`;
 
 // Bold URLs
 const BOLD_BASE = IS_SANDBOX
@@ -187,119 +244,80 @@ app.get('/', (req, res) => {
 });
 
 // ============================================
-// CHAT DE SOPORTE — TELEGRAM
+// CHAT IA — GEMINI
 // ============================================
 
-// POST /api/chat/send  — visitante envía mensaje
-app.post('/api/chat/send', async (req, res) => {
-  const { sessionId, text, visitorName } = req.body;
-  if (!sessionId || !text) {
-    return res.status(400).json({ ok: false, error: 'Faltan campos' });
-  }
-  if (!TELEGRAM_TOKEN || !TELEGRAM_ADMIN_ID) {
-    return res.status(503).json({ ok: false, error: 'Chat no configurado en servidor' });
-  }
+// POST /api/ai-chat  — visitante envía mensaje con historial
+app.post('/api/ai-chat', async (req, res) => {
+  const { history = [], message } = req.body;
+  
+  // 1. Validaciones iniciales
+  if (!message) return res.status(400).json({ ok: false, error: 'Falta el mensaje' });
+  if (!GEMINI_API_KEY) return res.status(503).json({ ok: false, error: 'API Key no configurada' });
 
   try {
     const axios = require('axios');
-    const message =
-      `💬 *Chat Web — Rinnovati*\n` +
-      `👤 *${visitorName || 'Visitante'}*\n` +
-      `🆔 \`${sessionId.slice(0, 8)}\`\n\n` +
-      `${text}\n\n` +
-      `_Responde a este mensaje en Telegram para contestarle._`;
 
-    const tgRes = await axios.post(`${TG_API}/sendMessage`, {
-      chat_id:    TELEGRAM_ADMIN_ID,
-      text:       message,
-      parse_mode: 'Markdown',
-    });
+    // 2. Limpiar y validar historial (Debe alternar user/model y empezar por user)
+    let formattedHistory = history
+      .map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.text }]
+      }))
+      .filter(m => m.parts[0].text); // Evitar textos vacíos
 
-    // Guardar relación telegram_msg_id → sessionId
-    const tgMsgId = tgRes.data.result.message_id;
-    msgToSession[tgMsgId] = sessionId;
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[CHAT send]', err.message);
-    res.status(500).json({ ok: false, error: 'Error al enviar mensaje' });
-  }
-});
-
-// GET /api/chat/updates?sessionId=XXX  — SSE: recibir replies del admin
-app.get('/api/chat/updates', (req, res) => {
-  const { sessionId } = req.query;
-  if (!sessionId) return res.status(400).end();
-
-  res.setHeader('Content-Type',  'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection',    'keep-alive');
-  res.flushHeaders();
-
-  // Confirmar conexión
-  res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
-
-  if (!chatClients[sessionId]) chatClients[sessionId] = [];
-  chatClients[sessionId].push(res);
-
-  // Limpiar al desconectar
-  req.on('close', () => {
-    chatClients[sessionId] = (chatClients[sessionId] || []).filter(r => r !== res);
-  });
-});
-
-// GET /api/chat/admin-id  — ayuda al admin a encontrar su chat ID
-app.get('/api/chat/admin-id', async (req, res) => {
-  if (!TELEGRAM_TOKEN) return res.json({ ok: false, error: 'Token no configurado' });
-  try {
-    const axios  = require('axios');
-    const result = await axios.get(`${TG_API}/getUpdates?limit=20`);
-    const chats  = [];
-    (result.data.result || []).forEach(u => {
-      const chat = u.message?.chat;
-      if (chat && !chats.find(c => c.id === chat.id)) {
-        chats.push({ id: chat.id, name: chat.first_name || chat.title || 'Sin nombre', type: chat.type });
-      }
-    });
-    res.json({ ok: true, chats, hint: 'Copia el "id" que corresponde a tu cuenta y ponlo en TELEGRAM_ADMIN_CHAT_ID del .env' });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ── Polling de Telegram — rutear replies al visitante ──
-async function pollTelegram() {
-  if (!TELEGRAM_TOKEN || !TELEGRAM_ADMIN_ID) return;
-  try {
-    const axios  = require('axios');
-    const result = await axios.get(
-      `${TG_API}/getUpdates?offset=${tgLastUpdate + 1}&timeout=3&allowed_updates=["message"]`
-    );
-    const updates = result.data.result || [];
-
-    for (const update of updates) {
-      tgLastUpdate = update.update_id;
-      const msg = update.message;
-
-      // Solo procesar si el admin respondió usando "Reply" de Telegram
-      if (msg && msg.text && msg.reply_to_message) {
-        const originalId = msg.reply_to_message.message_id;
-        const sessionId  = msgToSession[originalId];
-
-        if (sessionId && chatClients[sessionId]) {
-          const payload = JSON.stringify({ type: 'reply', text: msg.text });
-          chatClients[sessionId].forEach(r => {
-            try { r.write(`data: ${payload}\n\n`); } catch (_) {}
-          });
-        }
-      }
+    // Asegurar que el primer mensaje sea 'user'
+    if (formattedHistory.length > 0 && formattedHistory[0].role === 'model') {
+      formattedHistory.shift(); 
     }
-  } catch (_) { /* reintento silencioso */ }
 
-  setTimeout(pollTelegram, 2000);
-}
+    // 3. Construir el payload final
+    const payload = {
+      system_instruction: { 
+        parts: [{ text: GEMINI_SYSTEM_PROMPT }] 
+      },
+      contents: [
+        ...formattedHistory,
+        { role: 'user', parts: [{ text: message }] }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 800, // Un poco más de margen para respuestas ricas
+      }
+    };
 
-pollTelegram();
+    const geminiRes = await axios.post(
+      `${GEMINI_BASE}?key=${GEMINI_API_KEY}`,
+      payload,
+      { headers: { 'Content-Type': 'application/json' }, timeout: 25000 }
+    );
+
+    // 4. Extraer respuesta con seguridad
+    const candidate = geminiRes.data?.candidates?.[0];
+    
+    // Bloqueo por seguridad (Safety)
+    if (candidate?.finishReason === 'SAFETY') {
+        return res.json({ ok: true, reply: "Lo siento, no puedo responder a eso por políticas de seguridad." });
+    }
+
+    const reply = candidate?.content?.parts?.[0]?.text || 'No recibí respuesta del modelo.';
+
+    res.json({ ok: true, reply });
+
+  } catch (err) {
+    // IMPORTANTE: Imprime el error detallado de Google en tu consola para saber qué pasó
+    console.error('[GEMINI ERROR]:', JSON.stringify(err.response?.data, null, 2) || err.message);
+    
+    const errorMsg = err.response?.data?.error?.message || 'Error al consultar la IA';
+    res.status(500).json({ ok: false, error: errorMsg });
+  }
+});
+
+// ── Error handler global (Express 5) ─────────
+app.use((err, req, res, next) => {
+  console.error('[SERVER ERROR]', err.message);
+  res.status(500).json({ ok: false, error: 'Error interno del servidor' });
+});
 
 // ── Iniciar servidor ─────────────────────────
 app.listen(PORT, () => {
