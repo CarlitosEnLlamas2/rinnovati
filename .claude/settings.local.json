@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"C:\\\\Users\\\\pc\\\\Downloads\\\\rinnovati-bold\\\\rinnovati-bold\\\\public\\\\index.html\")",
+      "Bash(Select-Object -First 80)",
+      "Bash(Out-String)"
+    ]
+  }
+}
