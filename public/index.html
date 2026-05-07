@@ -866,8 +866,8 @@ function pmValidateStep(step){
   });
 });
 
-// ── Submit: redirige a Bold ──────────────────────
-function submitPayment(){
+// ── Submit: guarda datos → redirige a Bold ────────
+async function submitPayment(){
   const certs=['pm-cert1','pm-cert2','pm-cert3','pm-cert4'];
   const allChecked=certs.every(id=>document.getElementById(id)?.checked);
 
@@ -884,8 +884,46 @@ function submitPayment(){
   btn.classList.add('loading');
   btn.disabled=true;
 
-  // Redirigir al checkout de Bold
-  window.location.href='https://checkout.bold.co/payment/LNK_EMR072FOXA';
+  const payload={
+    nombre:       document.getElementById('pm-nombre')?.value.trim(),
+    email:        document.getElementById('pm-email')?.value.trim(),
+    telefono:     document.getElementById('pm-telefono')?.value.trim(),
+    pais:         document.getElementById('pm-pais')?.value,
+    especialidad: document.getElementById('pm-especialidad')?.value,
+    institucion:  document.getElementById('pm-institucion')?.value.trim(),
+    fecha:        document.getElementById('pm-fecha-val')?.value,
+    fuente:       document.getElementById('pm-fuente')?.value || '',
+    moneda:       'COP',
+    certificacion:{
+      esMedico:            document.getElementById('pm-cert1')?.checked,
+      habilitacionVigente: document.getElementById('pm-cert2')?.checked,
+      datosVeridicos:      document.getElementById('pm-cert3')?.checked,
+      aceptaTerminos:      document.getElementById('pm-cert4')?.checked,
+      timestamp:           new Date().toISOString()
+    }
+  };
+
+  try{
+    const res  = await fetch('/api/create-payment',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if(data.ok){
+      // Datos guardados → ir a Bold
+      window.location.href='https://checkout.bold.co/payment/LNK_EMR072FOXA';
+    } else {
+      btn.classList.remove('loading');
+      btn.disabled=false;
+      alert('Error al procesar el registro: '+(data.error||'Intente nuevamente'));
+    }
+  } catch(err){
+    btn.classList.remove('loading');
+    btn.disabled=false;
+    alert('Error de conexión. Por favor intente nuevamente.');
+  }
 }
 </script>
 
