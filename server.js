@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
+const db = require('./db');
 
 
 const app = express();
@@ -116,15 +117,21 @@ function generateOrderId(fecha, nombre) {
 // POST /api/create-payment
 // Body: { nombre, email, telefono, cedula, fecha, moneda }
 // ============================================
-app.post('/api/create-payment', (req, res) => {
+app.post('/api/create-payment', async (req, res) => {
   try {
-    const { nombre, email, telefono, cedula, fecha, moneda = 'COP' } = req.body;
+    const {
+      nombre, email, telefono, moneda = 'COP',
+      pais, ciudad,
+      especialidad, institucion, fecha, fuente,
+      firma, fechaFirma,
+      certificacion = {}
+    } = req.body;
 
     // Validaciones básicas
-    if (!nombre || !email || !cedula || !fecha) {
+    if (!nombre || !email || !fecha) {
       return res.status(400).json({
         ok: false,
-        error: 'Faltan campos requeridos: nombre, email, cedula, fecha'
+        error: 'Faltan campos requeridos: nombre, email, fecha'
       });
     }
 
@@ -143,24 +150,50 @@ app.post('/api/create-payment', (req, res) => {
     const orderId = generateOrderId(fecha, nombre);
     const hash    = generateIntegrity(orderId, amount, monedaUpper);
 
-    // Datos que el frontend necesita para inicializar el checkout Bold
-    const paymentData = {
+    // ── Guardar TODOS los campos del formulario en la base de datos ──
+    const certTs = certificacion.timestamp ? new Date(certificacion.timestamp) : new Date();
+    await db.execute(
+      `INSERT INTO registros (
+         order_id, moneda, monto, estado,
+         nombre, email, telefono, cedula, pais, ciudad,
+         especialidad, registro_medico, institucion, fecha_sesion, fuente,
+         firma, fecha_firma,
+         cert_medico_titulado, cert_habilitacion_vigente,
+         cert_datos_veridicos, cert_acepta_terminos, cert_timestamp
+       ) VALUES (
+         ?, ?, ?, 'pendiente',
+         ?, ?, ?, ?, ?, ?,
+         ?, ?, ?, ?, ?,
+         ?, ?,
+         ?, ?, ?, ?, ?
+       )`,
+      [
+        orderId, monedaUpper, amount,
+        nombre, email, telefono || null, null, pais || null, ciudad || null,
+        especialidad || null, null, institucion || null, fecha, fuente || null,
+        firma || null, fechaFirma || null,
+        certificacion.esMedico           ? 1 : 0,
+        certificacion.habilitacionVigente ? 1 : 0,
+        certificacion.datosVeridicos      ? 1 : 0,
+        certificacion.aceptaTerminos      ? 1 : 0,
+        certTs
+      ]
+    );
+
+    console.log(`[PAGO] Nueva orden: ${orderId} | ${nombre} | ${fecha} | ${amount} ${monedaUpper}`);
+
+    res.json({
       ok: true,
       orderId,
       amount,
       currency: monedaUpper,
       integrityHash: hash,
       publicKey: BOLD_PUBLIC_KEY,
-      // Metadata visible en tu panel Bold
       description: `Masterclass PDRN — ${fecha}`,
       customerEmail: email,
       customerName: nombre,
-      // Sandbox flag
       sandbox: IS_SANDBOX
-    };
-
-    console.log(`[PAGO] Nueva orden: ${orderId} | ${nombre} | ${fecha} | ${amount} ${monedaUpper}`);
-    res.json(paymentData);
+    });
 
   } catch (err) {
     console.error('[ERROR create-payment]', err);
@@ -173,7 +206,7 @@ app.post('/api/create-payment', (req, res) => {
 // POST /api/bold-webhook
 // Bold llama esto cuando el pago es aprobado/rechazado
 // ============================================
-app.post('/api/bold-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/api/bold-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const signature = req.headers['x-bold-signature'] || '';
     const body      = req.body.toString();
@@ -196,17 +229,27 @@ app.post('/api/bold-webhook', express.raw({ type: 'application/json' }), (req, r
     const { type, data } = event;
 
     if (type === 'transaction.approved') {
-      const { order_id, amount, currency, customer } = data;
+      const { order_id, amount, currency, customer, id: boldTxId } = data;
       console.log(`✅ PAGO APROBADO: ${order_id} | ${amount} ${currency} | ${customer?.email}`);
-      // Aquí puedes:
-      // - Guardar en base de datos
-      // - Enviar email de confirmación
-      // - Registrar al médico en la sesión
+
+      await db.execute(
+        `UPDATE registros
+         SET estado = 'aprobado', bold_tx_id = ?
+         WHERE order_id = ?`,
+        [boldTxId || null, order_id]
+      );
     }
 
     if (type === 'transaction.rejected') {
-      const { order_id, reason } = data;
+      const { order_id, reason, id: boldTxId } = data;
       console.log(`❌ PAGO RECHAZADO: ${order_id} | Razón: ${reason}`);
+
+      await db.execute(
+        `UPDATE registros
+         SET estado = 'rechazado', razon_rechazo = ?, bold_tx_id = ?
+         WHERE order_id = ?`,
+        [reason || null, boldTxId || null, order_id]
+      );
     }
 
     res.status(200).json({ received: true });

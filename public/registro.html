@@ -886,12 +886,6 @@ body{
         </div>
 
         <div class="field">
-          <label>Número de cédula / DNI <span class="req">*</span></label>
-          <input type="text" id="cedula" name="cedula" placeholder="1234567890" inputmode="numeric">
-          <span class="err-msg">Ingrese su número de documento.</span>
-        </div>
-
-        <div class="field">
           <label>País de residencia <span class="req">*</span></label>
           <select id="pais" name="pais">
             <option value="">Seleccione su país</option>
@@ -960,12 +954,6 @@ body{
             </optgroup>
           </select>
           <span class="err-msg">Seleccione su especialidad.</span>
-        </div>
-
-        <div class="field">
-          <label>Número de registro médico <span class="req">*</span></label>
-          <input type="text" id="registro" name="registro" placeholder="RM-0000000">
-          <span class="err-msg">Ingrese su número de registro médico.</span>
         </div>
 
         <div class="field full">
@@ -1172,7 +1160,7 @@ body{
 
 
 // ── Progreso del formulario ────────────────────────────
-const REQUIRED_IDS = ['nombre','email','telefono','cedula','pais','especialidad','registro','fecha','firma'];
+const REQUIRED_IDS = ['nombre','email','telefono','pais','especialidad','fecha','firma'];
 const CERT_IDS = ['cert1','cert2','cert3','cert4'];
 
 function updateProgress(){
@@ -1201,10 +1189,8 @@ function validate(){
   ok = validateField('nombre',      v => v.length >= 3)                         && ok;
   ok = validateField('email',       v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) && ok;
   ok = validateField('telefono',    v => v.length >= 7)                         && ok;
-  ok = validateField('cedula',      v => v.length >= 4)                         && ok;
   ok = validateField('pais',        v => v !== '')                              && ok;
   ok = validateField('especialidad',v => v !== '')                              && ok;
-  ok = validateField('registro',    v => v.length >= 3)                         && ok;
   ok = validateField('fecha',       v => v !== '')                              && ok;
   ok = validateField('firma',       v => v.length >= 3)                         && ok;
 
@@ -1426,11 +1412,9 @@ async function submitForm(){
     nombre:       document.getElementById('nombre').value.trim(),
     email:        document.getElementById('email').value.trim(),
     telefono:     document.getElementById('telefono').value.trim(),
-    cedula:       document.getElementById('cedula').value.trim(),
     pais:         document.getElementById('pais').value,
     ciudad:       document.getElementById('ciudad').value.trim(),
     especialidad: document.getElementById('especialidad').value,
-    registro:     document.getElementById('registro').value.trim(),
     institucion:  document.getElementById('institucion').value.trim(),
     fecha:        document.getElementById('fecha').value,
     fuente:       document.getElementById('fuente').value,
