@@ -9,7 +9,8 @@
       "Bash(curl -s -X POST http://localhost:3000/api/ai-chat -H \"Content-Type: application/json\" -d \"{\\\\\"history\\\\\":[],\\\\\"message\\\\\":\\\\\"¿Qué incluye la masterclass de PDRN?\\\\\"}\")",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\pc\\\\Downloads\\\\rinnovati-bold\\\\rinnovati-bold\\\\\" | Where-Object { $_.Name -ne \"node_modules\" } | Select-Object Name)",
       "Bash(git checkout *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\pc\\\\Downloads\\\\rinnovati-bold\\\\rinnovati-bold\" | Where-Object { $_.Name -ne \"node_modules\" } | Select-Object Name, PSIsContainer)"
     ]
   }
 }

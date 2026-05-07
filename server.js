@@ -150,35 +150,33 @@ app.post('/api/create-payment', async (req, res) => {
     const orderId = generateOrderId(fecha, nombre);
     const hash    = generateIntegrity(orderId, amount, monedaUpper);
 
-    // ── Guardar TODOS los campos del formulario en la base de datos ──
+    // ── Guardar TODOS los campos del formulario en Firestore ──
     const certTs = certificacion.timestamp ? new Date(certificacion.timestamp) : new Date();
-    await db.execute(
-      `INSERT INTO registros (
-         order_id, moneda, monto, estado,
-         nombre, email, telefono, cedula, pais, ciudad,
-         especialidad, registro_medico, institucion, fecha_sesion, fuente,
-         firma, fecha_firma,
-         cert_medico_titulado, cert_habilitacion_vigente,
-         cert_datos_veridicos, cert_acepta_terminos, cert_timestamp
-       ) VALUES (
-         ?, ?, ?, 'pendiente',
-         ?, ?, ?, ?, ?, ?,
-         ?, ?, ?, ?, ?,
-         ?, ?,
-         ?, ?, ?, ?, ?
-       )`,
-      [
-        orderId, monedaUpper, amount,
-        nombre, email, telefono || null, null, pais || null, ciudad || null,
-        especialidad || null, null, institucion || null, fecha, fuente || null,
-        firma || null, fechaFirma || null,
-        certificacion.esMedico           ? 1 : 0,
-        certificacion.habilitacionVigente ? 1 : 0,
-        certificacion.datosVeridicos      ? 1 : 0,
-        certificacion.aceptaTerminos      ? 1 : 0,
-        certTs
-      ]
-    );
+    await db.collection('registros').doc(orderId).set({
+      order_id:   orderId,
+      moneda:     monedaUpper,
+      monto:      amount,
+      estado:     'pendiente',
+      nombre,
+      email,
+      telefono:             telefono    || null,
+      cedula:               null,
+      pais:                 pais        || null,
+      ciudad:               ciudad      || null,
+      especialidad:         especialidad || null,
+      registro_medico:      null,
+      institucion:          institucion || null,
+      fecha_sesion:         fecha,
+      fuente:               fuente      || null,
+      firma:                firma       || null,
+      fecha_firma:          fechaFirma  || null,
+      cert_medico_titulado:      certificacion.esMedico           ? true : false,
+      cert_habilitacion_vigente: certificacion.habilitacionVigente ? true : false,
+      cert_datos_veridicos:      certificacion.datosVeridicos      ? true : false,
+      cert_acepta_terminos:      certificacion.aceptaTerminos      ? true : false,
+      cert_timestamp:            certTs,
+      creado_en:                 new Date()
+    });
 
     console.log(`[PAGO] Nueva orden: ${orderId} | ${nombre} | ${fecha} | ${amount} ${monedaUpper}`);
 
@@ -232,24 +230,21 @@ app.post('/api/bold-webhook', express.raw({ type: 'application/json' }), async (
       const { order_id, amount, currency, customer, id: boldTxId } = data;
       console.log(`✅ PAGO APROBADO: ${order_id} | ${amount} ${currency} | ${customer?.email}`);
 
-      await db.execute(
-        `UPDATE registros
-         SET estado = 'aprobado', bold_tx_id = ?
-         WHERE order_id = ?`,
-        [boldTxId || null, order_id]
-      );
+      await db.collection('registros').doc(order_id).update({
+        estado:    'aprobado',
+        bold_tx_id: boldTxId || null
+      });
     }
 
     if (type === 'transaction.rejected') {
       const { order_id, reason, id: boldTxId } = data;
       console.log(`❌ PAGO RECHAZADO: ${order_id} | Razón: ${reason}`);
 
-      await db.execute(
-        `UPDATE registros
-         SET estado = 'rechazado', razon_rechazo = ?, bold_tx_id = ?
-         WHERE order_id = ?`,
-        [reason || null, boldTxId || null, order_id]
-      );
+      await db.collection('registros').doc(order_id).update({
+        estado:         'rechazado',
+        razon_rechazo:  reason    || null,
+        bold_tx_id:     boldTxId  || null
+      });
     }
 
     res.status(200).json({ received: true });
