@@ -3,11 +3,11 @@
 // ============================================
 const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
+const pool = mysql.createPool({co
   host:     process.env.DB_HOST     || 'localhost',
-  port:     parseInt(process.env.DB_PORT || '3860'),
-  user:     process.env.DB_USER     || 'root',
-  password: process.env.DB_PASSWORD || '',
+  port:     parseInt(process.env.DB_PORT || '3306'),
+  user:     process.env.DB_USER     || 'rinnovat_db',
+  password: process.env.DB_PASSWORD || ';?$yiLK+8Bk(&uKG',
   database: process.env.DB_NAME     || 'rinnovat_rinnovati',
   waitForConnections: true,
   connectionLimit:    10,
