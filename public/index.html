@@ -275,6 +275,21 @@ footer{padding:60px 5% 36px;border-top:1px solid var(--bdr);text-align:center}
 .pm-field select option{background:#09090F;color:#fff}
 .pm-field select optgroup{background:#09090F;color:rgba(201,168,76,.5);font-size:10px;letter-spacing:2px;font-weight:700}
 .pm-field-err input,.pm-field-err select{border-color:rgba(255,80,80,.55)!important;background:rgba(255,80,80,.04)!important}
+/* date selector inside modal */
+.pm-date-confirmed{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(201,168,76,.08);border:1.5px solid rgba(201,168,76,.5);border-radius:10px;padding:12px 16px;margin-bottom:14px}
+.pm-date-confirmed-text{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold2)}
+.pm-date-confirmed-text svg{width:15px;height:15px;stroke:var(--gold);flex-shrink:0}
+.pm-date-change-btn{background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 11px;font-size:11px;color:rgba(255,255,255,.35);cursor:pointer;transition:all .2s;white-space:nowrap;font-family:var(--font)}
+.pm-date-change-btn:hover{border-color:rgba(201,168,76,.4);color:var(--gold)}
+.pm-date-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.pm-date-card{background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 10px;cursor:pointer;transition:all .18s;text-align:center;user-select:none}
+.pm-date-card:hover{border-color:rgba(201,168,76,.4);background:rgba(201,168,76,.04)}
+.pm-date-card.selected{border-color:var(--gold);background:rgba(201,168,76,.1)}
+.pm-date-card .pmd-day{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--gold);line-height:1}
+.pm-date-card .pmd-month{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin:2px 0 6px}
+.pm-date-card .pmd-spots{font-size:10px;color:rgba(255,255,255,.25)}
+.pm-date-err{display:none;font-size:11px;color:#ff8080;margin-top:-10px;margin-bottom:10px}
+.pm-date-err.show{display:block}
 /* cert block */
 .pm-cert{background:rgba(255,255,255,.02);border:1px solid rgba(201,168,76,.13);border-radius:11px;padding:14px 16px}
 .pm-cert-text{font-size:11px;color:rgba(255,255,255,.3);line-height:1.55;margin-bottom:13px;padding-left:10px;border-left:2px solid rgba(201,168,76,.2)}
@@ -717,10 +732,53 @@ document.getElementById('yt-container').addEventListener('click',function(){
 
 let pmCurrentStep = 1;
 
+const PM_DATES=[
+  {value:'2025-05-17',day:'17',month:'Mayo 2025',spots:'2 cupos'},
+  {value:'2025-05-24',day:'24',month:'Mayo 2025',spots:'4 cupos'},
+  {value:'2025-06-05',day:'05',month:'Jun 2025', spots:'4 cupos'},
+];
+
+function pmRenderDateGrid(){
+  const current=document.getElementById('pm-fecha-val').value;
+  document.getElementById('pm-date-grid').innerHTML=PM_DATES.map(d=>`
+    <div class="pm-date-card${d.value===current?' selected':''}" onclick="pmSelectDate('${d.value}','${d.day} de ${d.month}',this)">
+      <div class="pmd-day">${d.day}</div>
+      <div class="pmd-month">${d.month}</div>
+      <div class="pmd-spots">${d.spots}</div>
+    </div>`).join('');
+}
+
+function pmSelectDate(value,label,el){
+  document.querySelectorAll('.pm-date-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('pm-fecha-val').value=value;
+  document.getElementById('pm-fecha-text').textContent=label;
+  document.getElementById('pm-date-err').classList.remove('show');
+}
+
+function pmMostrarSelectorFecha(){
+  document.getElementById('pm-fecha-confirmada').style.display='none';
+  document.getElementById('pm-fecha-selector').style.display='block';
+  pmRenderDateGrid();
+}
+
 function openPayModal(fecha){
   document.getElementById('payModalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
-  if(fecha) document.getElementById('pm-fecha-text').textContent=fecha;
+  const match=fecha && PM_DATES.find(d=>d.day+' de '+d.month===fecha || d.value===fecha);
+  if(match){
+    document.getElementById('pm-fecha-val').value=match.value;
+    document.getElementById('pm-fecha-text').textContent=match.day+' de '+match.month;
+    document.getElementById('pm-fecha-confirmada-text').textContent=match.day+' de '+match.month;
+    document.getElementById('pm-fecha-confirmada').style.display='block';
+    document.getElementById('pm-fecha-selector').style.display='none';
+  } else {
+    document.getElementById('pm-fecha-val').value='';
+    document.getElementById('pm-fecha-text').textContent='Selecciona una fecha';
+    document.getElementById('pm-fecha-confirmada').style.display='none';
+    document.getElementById('pm-fecha-selector').style.display='block';
+    pmRenderDateGrid();
+  }
   pmGoTo(1);
 }
 
@@ -771,21 +829,25 @@ function pmCheck(id,testFn){
 function pmValidateStep(step){
   let ok=true;
   if(step===1){
+    if(!document.getElementById('pm-fecha-val').value){
+      document.getElementById('pm-date-err').classList.add('show');
+      document.getElementById('pm-fecha-selector').style.display='block';
+      pmRenderDateGrid();
+      ok=false;
+    }
     ok=pmCheck('pm-nombre', v=>v.length>=3)&ok;
     ok=pmCheck('pm-email',  v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))&ok;
     ok=pmCheck('pm-telefono',v=>v.length>=7)&ok;
-    ok=pmCheck('pm-cedula', v=>v.length>=4)&ok;
     ok=pmCheck('pm-pais',   v=>v!=='')&ok;
   }
   if(step===2){
     ok=pmCheck('pm-especialidad',v=>v!=='')&ok;
-    ok=pmCheck('pm-registro',    v=>v.length>=3)&ok;
   }
   return !!ok;
 }
 
 // Live clear errors
-['pm-nombre','pm-email','pm-telefono','pm-cedula','pm-pais','pm-especialidad','pm-registro'].forEach(id=>{
+['pm-nombre','pm-email','pm-telefono','pm-pais','pm-especialidad'].forEach(id=>{
   document.getElementById(id)?.addEventListener('input',function(){
     this.closest('.pm-field')?.classList.remove('pm-field-err');
   });
@@ -851,6 +913,25 @@ function submitPayment(){
     <!-- PASO 1: Datos personales -->
     <div class="pm-step active" id="pm-step-1">
       <div class="pm-step-heading">Datos Personales</div>
+
+      <!-- Fecha: confirmada o selector -->
+      <div id="pm-fecha-confirmada" style="display:none">
+        <div class="pm-date-confirmed">
+          <div class="pm-date-confirmed-text">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span id="pm-fecha-confirmada-text"></span>
+          </div>
+          <button type="button" class="pm-date-change-btn" onclick="pmMostrarSelectorFecha()">Cambiar</button>
+        </div>
+      </div>
+
+      <div id="pm-fecha-selector" style="display:none">
+        <div class="pm-date-grid" id="pm-date-grid"></div>
+        <div class="pm-date-err" id="pm-date-err">Por favor seleccione una fecha para continuar.</div>
+      </div>
+
+      <input type="hidden" id="pm-fecha-val" name="pm-fecha-val">
+
       <div class="pm-grid">
         <div class="pm-field full">
           <label>Nombre completo <span class="req">*</span></label>
@@ -863,10 +944,6 @@ function submitPayment(){
         <div class="pm-field">
           <label>Teléfono / WhatsApp <span class="req">*</span></label>
           <input type="tel" id="pm-telefono" placeholder="+57 300 000 0000">
-        </div>
-        <div class="pm-field">
-          <label>Cédula / DNI <span class="req">*</span></label>
-          <input type="text" id="pm-cedula" placeholder="1234567890" inputmode="numeric">
         </div>
         <div class="pm-field">
           <label>País <span class="req">*</span></label>
@@ -915,10 +992,6 @@ function submitPayment(){
               <option>Otra especialidad</option>
             </optgroup>
           </select>
-        </div>
-        <div class="pm-field">
-          <label>Registro médico <span class="req">*</span></label>
-          <input type="text" id="pm-registro" placeholder="RM-0000000">
         </div>
         <div class="pm-field full">
           <label>Institución / Clínica</label>
