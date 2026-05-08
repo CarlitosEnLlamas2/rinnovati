@@ -1,11 +1,36 @@
-PassengerNodejs /usr/bin/node
-PassengerStartupFile server.js
-PassengerAppType node
+Options -Indexes
+
+# Proteger archivos sensibles
+<FilesMatch "\.(env|json|lock|md)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "^composer">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear acceso directo a archivos _ del directorio api
+<FilesMatch "^_">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^$ - [L]
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ server.js [L]
+
+    # Servir archivos y carpetas que existen directamente
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # payment-status con orderId en la URL
+    RewriteRule ^api/payment-status/(.+)$ api/payment-status.php?orderId=$1 [L,QSA]
+
+    # Resto de rutas API → PHP
+    RewriteRule ^api/([^/]+)/?$ api/$1.php [L]
+
+    # Todo lo demás → index.html (SPA fallback)
+    RewriteRule ^ index.html [L]
 </IfModule>
