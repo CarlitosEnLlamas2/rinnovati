@@ -47,7 +47,7 @@
 
   // Si se abrió como ventana principal (redirección directa), volver al registro con flag
   if(window.self === window.top){
-    var back = '/registro.html?paid=1' +
+    var back = '/?paid=1' +
       (orderId ? '&orderId=' + encodeURIComponent(orderId) : '');
     setTimeout(function(){ window.location.href = back; }, 800);
   }

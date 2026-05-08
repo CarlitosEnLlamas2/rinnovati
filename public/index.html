@@ -904,7 +904,7 @@ async function submitPayment(){
   };
 
   try{
-    const res  = await fetch('/save-registro',{
+    const res  = await fetch('/api/save-registro',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
