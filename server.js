@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
+const axios = require('axios');
 const db = require('./db');
 
 
@@ -294,8 +295,6 @@ app.post('/api/ai-chat', async (req, res) => {
   if (!GEMINI_API_KEY) return res.status(503).json({ ok: false, error: 'API Key no configurada' });
 
   try {
-    const axios = require('axios');
-
     // 2. Limpiar y validar historial (Debe alternar user/model y empezar por user)
     let formattedHistory = history
       .map(m => ({

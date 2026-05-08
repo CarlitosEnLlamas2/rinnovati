@@ -1,22 +1,19 @@
 {
   "name": "rinnovati-bold",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Rinnovati Institute — Servidor de pagos Bold + chat Gemini",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/genai": "^1.52.0",
     "axios": "^1.16.0",
     "cors": "^2.8.6",
-
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "firebase-admin": "^13.9.0",
-"node-fetch": "^2.7.0"
+    "firebase-admin": "^13.9.0"
   }
 }
