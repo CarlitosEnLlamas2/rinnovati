@@ -201,6 +201,69 @@ app.post('/api/create-payment', async (req, res) => {
 });
 
 // ============================================
+// RUTA: Guardar registro en Firebase y redirigir a Bold
+// POST /api/save-registro
+// ============================================
+app.post('/api/save-registro', async (req, res) => {
+  try {
+    const {
+      nombre, email, telefono, moneda = 'COP',
+      pais, ciudad,
+      especialidad, institucion, fecha, fuente,
+      firma, fechaFirma,
+      certificacion = {}
+    } = req.body;
+
+    if (!nombre || !email || !fecha) {
+      return res.status(400).json({ ok: false, error: 'Faltan campos requeridos: nombre, email, fecha' });
+    }
+
+    const PRECIOS = { COP: 1_250_000, USD: 297 };
+    const monedaUpper = moneda.toUpperCase();
+    if (!PRECIOS[monedaUpper]) {
+      return res.status(400).json({ ok: false, error: 'Moneda no soportada. Usa COP o USD.' });
+    }
+
+    const amount  = PRECIOS[monedaUpper];
+    const orderId = generateOrderId(fecha, nombre);
+    const certTs  = certificacion.timestamp ? new Date(certificacion.timestamp) : new Date();
+
+    await db.collection('registros').doc(orderId).set({
+      order_id:   orderId,
+      moneda:     monedaUpper,
+      monto:      amount,
+      estado:     'pendiente',
+      nombre,
+      email,
+      telefono:             telefono     || null,
+      cedula:               null,
+      pais:                 pais         || null,
+      ciudad:               ciudad       || null,
+      especialidad:         especialidad || null,
+      registro_medico:      null,
+      institucion:          institucion  || null,
+      fecha_sesion:         fecha,
+      fuente:               fuente       || null,
+      firma:                firma        || null,
+      fecha_firma:          fechaFirma   || null,
+      cert_medico_titulado:      certificacion.esMedico           ? true : false,
+      cert_habilitacion_vigente: certificacion.habilitacionVigente ? true : false,
+      cert_datos_veridicos:      certificacion.datosVeridicos      ? true : false,
+      cert_acepta_terminos:      certificacion.aceptaTerminos      ? true : false,
+      cert_timestamp:            certTs,
+      creado_en:                 new Date()
+    });
+
+    console.log(`[REGISTRO] ${orderId} | ${nombre} | ${fecha} | ${amount} ${monedaUpper}`);
+    res.json({ ok: true, orderId });
+
+  } catch (err) {
+    console.error('[ERROR save-registro]', err);
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
+  }
+});
+
+// ============================================
 // RUTA: Webhook Bold — Confirmar pago
 // POST /api/bold-webhook
 // Bold llama esto cuando el pago es aprobado/rechazado

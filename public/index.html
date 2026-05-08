@@ -904,7 +904,7 @@ async function submitPayment(){
   };
 
   try{
-    const res  = await fetch('/api/create-payment',{
+    const res  = await fetch('/save-registro',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
@@ -912,7 +912,6 @@ async function submitPayment(){
     const data = await res.json();
 
     if(data.ok){
-      // Datos guardados → ir a Bold
       window.location.href='https://checkout.bold.co/payment/LNK_EMR072FOXA';
     } else {
       btn.classList.remove('loading');

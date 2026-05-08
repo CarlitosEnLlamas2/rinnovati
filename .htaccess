@@ -1,0 +1,11 @@
+PassengerNodejs /usr/bin/node
+PassengerStartupFile server.js
+PassengerAppType node
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ server.js [L]
+</IfModule>
