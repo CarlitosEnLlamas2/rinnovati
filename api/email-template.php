@@ -205,17 +205,14 @@ HTML;
 }
 
 function sendInscripcionEmail(string $email, string $nombre, string $fecha, string $orderId): bool {
-    $html    = buildInscripcionEmail($nombre, $fecha, $orderId);
-    $subject = '=?UTF-8?B?' . base64_encode('Tu inscripción está siendo procesada — Rinnovati Institute') . '?=';
-    $from    = $_ENV['ADMISIONES_EMAIL'] ?? 'admisiones@rinnovatinstitute.com';
+    $html   = buildInscripcionEmail($nombre, $fecha, $orderId);
+    $from   = $_ENV['ADMISIONES_EMAIL'] ?? 'admisiones@rinnovatinstitute.com';
+    $apiKey = $_ENV['RESEND_API_KEY']   ?? '';
 
-    $boundary = '----=_Part_' . md5(uniqid());
-
-    $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
-    $headers .= "From: Rinnovati Institute <{$from}>\r\n";
-    $headers .= "Reply-To: {$from}\r\n";
-    $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+    if (!$apiKey) {
+        error_log('[EMAIL] RESEND_API_KEY no configurada');
+        return false;
+    }
 
     $plain  = "Estimado/a {$nombre},\r\n\r\n";
     $plain .= "Hemos recibido tu solicitud de inscripción a la Masterclass Técnica PDRN.\r\n";
@@ -225,15 +222,40 @@ function sendInscripcionEmail(string $email, string $nombre, string $fecha, stri
     $plain .= "¿Preguntas? Escríbenos a {$from}\r\n";
     $plain .= "Rinnovati Institute — rinnovatinstitute.com\r\n";
 
-    $body  = "--{$boundary}\r\n";
-    $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
-    $body .= "Content-Transfer-Encoding: base64\r\n\r\n";
-    $body .= chunk_split(base64_encode($plain)) . "\r\n";
-    $body .= "--{$boundary}\r\n";
-    $body .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $body .= "Content-Transfer-Encoding: base64\r\n\r\n";
-    $body .= chunk_split(base64_encode($html)) . "\r\n";
-    $body .= "--{$boundary}--";
+    $payload = json_encode([
+        'from'    => "Rinnovati Institute <{$from}>",
+        'to'      => [$email],
+        'subject' => 'Tu inscripción está siendo procesada — Rinnovati Institute',
+        'html'    => $html,
+        'text'    => $plain,
+    ]);
 
-    return mail($email, $subject, $body, $headers);
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        error_log("[EMAIL_FAIL] cURL error: {$curlErr}");
+        return false;
+    }
+
+    if ($httpCode !== 200) {
+        error_log("[EMAIL_FAIL] Resend HTTP {$httpCode}: {$response}");
+        return false;
+    }
+
+    return true;
 }
