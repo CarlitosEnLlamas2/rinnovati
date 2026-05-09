@@ -327,19 +327,9 @@ footer{padding:60px 5% 36px;border-top:1px solid var(--bdr);text-align:center}
 @keyframes vslPulse{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,.35)}50%{box-shadow:0 0 14px 4px rgba(201,168,76,.18)}}
 @keyframes vslBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 
-/* WHATSAPP FLOATING WIDGET */
-.wa-widget{position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
-.wa-popup{background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 18px;width:230px;box-shadow:0 8px 32px rgba(0,0,0,.55);animation:waFadeIn .3s ease;position:relative}
-.wa-popup::after{content:'';position:absolute;bottom:-8px;right:22px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid #1a1a1a}
-.wa-popup-close{position:absolute;top:8px;right:12px;font-size:18px;color:rgba(255,255,255,.35);cursor:pointer;line-height:1;transition:color .2s}
-.wa-popup-close:hover{color:#fff}
-.wa-popup p{margin:0 0 12px;font-size:14px;color:rgba(255,255,255,.85);line-height:1.5;padding-right:14px}
-.wa-popup-btn{display:block;background:#25D366;color:#fff;text-align:center;padding:9px 14px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;transition:background .2s}
-.wa-popup-btn:hover{background:#1da851}
-.wa-btn{width:58px;height:58px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(37,211,102,.45);text-decoration:none;transition:transform .2s,box-shadow .2s;animation:waPop .4s .5s both}
-.wa-btn:hover{transform:scale(1.1);box-shadow:0 6px 24px rgba(37,211,102,.6)}
-@keyframes waFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes waPop{from{transform:scale(0)}to{transform:scale(1)}}
+/* WHATSAPP FOOTER LINK */
+.wa-footer-link{display:inline-flex;align-items:center;gap:7px;color:rgba(255,255,255,.28);font-size:11px;text-decoration:none;letter-spacing:.3px;transition:color .2s;margin-top:10px}
+.wa-footer-link:hover{color:rgba(255,255,255,.55)}
 
 /* TRUST & PAYMENTS SECTION */
 .trust-sec{padding:72px 5% 64px;border-top:1px solid rgba(255,255,255,.07);position:relative;overflow:hidden}
@@ -758,6 +748,10 @@ footer{padding:60px 5% 36px;border-top:1px solid var(--bdr);text-align:center}
     www.rinnovatinstitute.com
   </div>
   <div class="footer-legal">© 2025 Rinnovati Institute S.A.S. · Todos los derechos reservados · Válido solo para profesionales de la salud certificados</div>
+  <a href="https://wa.me/573126819847?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20la%20Masterclass%20de%20Rinnovati%20Institute" target="_blank" class="wa-footer-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="13" height="13" fill="currentColor"><path d="M16 0C7.163 0 0 7.163 0 16c0 2.822.738 5.474 2.027 7.776L0 32l8.437-2.007A15.93 15.93 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333a13.27 13.27 0 01-6.77-1.845l-.485-.287-5.007 1.192 1.264-4.882-.317-.503A13.227 13.227 0 012.667 16C2.667 8.636 8.636 2.667 16 2.667S29.333 8.636 29.333 16 23.364 29.333 16 29.333zm7.27-9.927c-.398-.199-2.354-1.162-2.72-1.295-.365-.132-.63-.198-.896.199-.265.397-1.028 1.295-1.26 1.56-.232.265-.464.298-.862.1-.398-.2-1.681-.619-3.202-1.977-1.183-1.056-1.982-2.36-2.215-2.758-.232-.398-.025-.613.175-.81.18-.18.398-.464.597-.696.199-.232.265-.398.398-.663.132-.265.066-.497-.033-.696-.1-.199-.896-2.162-1.228-2.96-.323-.776-.65-.672-.896-.684l-.763-.013c-.265 0-.697.1-.063 1.028.534.73 2.176 3.34 2.617 4.006.44.664 2.617 4.007 6.346 5.62.887.383 1.58.612 2.12.784.89.283 1.7.243 2.34.147.714-.107 2.2-.9 2.51-1.768.31-.868.31-1.612.218-1.768-.09-.155-.33-.24-.728-.44z"/></svg>
+    Consultas por WhatsApp
+  </a>
 </footer>
 
 </div><!-- /content -->
@@ -1382,24 +1376,5 @@ async function submitPayment(){
 })();
 </script>
 
-<!-- WHATSAPP FLOATING BUTTON -->
-<div class="wa-widget" id="wa-widget">
-  <div class="wa-popup" id="wa-popup">
-    <span class="wa-popup-close" onclick="document.getElementById('wa-popup').style.display='none'">×</span>
-    <p>¿Tienes alguna duda? ¡Con gusto te asesoramos! 😊</p>
-    <a href="https://wa.me/573126819847?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20la%20Masterclass%20de%20Rinnovati%20Institute" target="_blank" class="wa-popup-btn">💬 Chatear con un asesor</a>
-  </div>
-  <a href="https://wa.me/573126819847?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20la%20Masterclass%20de%20Rinnovati%20Institute" target="_blank" class="wa-btn" aria-label="WhatsApp">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="30" height="30" fill="white"><path d="M16 0C7.163 0 0 7.163 0 16c0 2.822.738 5.474 2.027 7.776L0 32l8.437-2.007A15.93 15.93 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333a13.27 13.27 0 01-6.77-1.845l-.485-.287-5.007 1.192 1.264-4.882-.317-.503A13.227 13.227 0 012.667 16C2.667 8.636 8.636 2.667 16 2.667S29.333 8.636 29.333 16 23.364 29.333 16 29.333zm7.27-9.927c-.398-.199-2.354-1.162-2.72-1.295-.365-.132-.63-.198-.896.199-.265.397-1.028 1.295-1.26 1.56-.232.265-.464.298-.862.1-.398-.2-1.681-.619-3.202-1.977-1.183-1.056-1.982-2.36-2.215-2.758-.232-.398-.025-.613.175-.81.18-.18.398-.464.597-.696.199-.232.265-.398.398-.663.132-.265.066-.497-.033-.696-.1-.199-.896-2.162-1.228-2.96-.323-.776-.65-.672-.896-.684l-.763-.013c-.265 0-.697.1-.063 1.028.534.73 2.176 3.34 2.617 4.006.44.664 2.617 4.007 6.346 5.62.887.383 1.58.612 2.12.784.89.283 1.7.243 2.34.147.714-.107 2.2-.9 2.51-1.768.31-.868.31-1.612.218-1.768-.09-.155-.33-.24-.728-.44z"/></svg>
-  </a>
-</div>
-<script>
-(function(){
-  setTimeout(function(){
-    var p=document.getElementById('wa-popup');
-    if(p) p.style.display='block';
-  }, 5000);
-})();
-</script>
 </body>
 </html>
