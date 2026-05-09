@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/_helpers.php';
 require_once __DIR__ . '/_firebase.php';
+require_once __DIR__ . '/email-template.php';
 
 loadEnv(__DIR__ . '/../.env');
 setCorsHeaders();
@@ -62,5 +63,10 @@ $ok = firestoreSet('registros', $orderId, [
 if (!$ok) jsonError('Error al guardar el registro', 500);
 
 error_log("[REGISTRO] $orderId | $nombre | $fecha | $amount $moneda");
+
+$emailSent = sendInscripcionEmail($email, $nombre, $fecha, $orderId);
+if (!$emailSent) {
+    error_log("[EMAIL_FAIL] No se pudo enviar correo de inscripción a $email | $orderId");
+}
 
 jsonOk(['orderId' => $orderId]);

@@ -525,25 +525,21 @@ footer{padding:60px 5% 36px;border-top:1px solid var(--bdr);text-align:center}
         <div class="date-tag-sold">Agotado</div>
         <div class="month">Mayo 2025</div>
         <div class="day">08</div>
-        <div class="spots"><strong>0 cupos</strong> disponibles</div>
       </div>
       <div class="date-card featured fi fi-d2" onclick="openPayModal('Mayo 17, 2025')" style="cursor:pointer" title="Seleccionar esta fecha">
-        <div class="date-tag-open">2 cupos</div>
+        <div class="date-tag-open">Disponible</div>
         <div class="month">Mayo 2025</div>
         <div class="day">17</div>
-        <div class="spots"><strong>2 cupos</strong> disponibles</div>
       </div>
       <div class="date-card fi fi-d3" onclick="openPayModal('Mayo 24, 2025')" style="cursor:pointer" title="Seleccionar esta fecha">
         <div class="date-tag-open">Disponible</div>
         <div class="month">Mayo 2025</div>
         <div class="day">24</div>
-        <div class="spots"><strong>4 cupos</strong> disponibles</div>
       </div>
       <div class="date-card fi fi-d4" onclick="openPayModal('Junio 5, 2025')" style="cursor:pointer" title="Seleccionar esta fecha">
         <div class="date-tag-open">Disponible</div>
         <div class="month">Junio 2025</div>
         <div class="day">05</div>
-        <div class="spots"><strong>4 cupos</strong> disponibles</div>
       </div>
     </div>
     <div class="scarcity-bar fi fi-d3">
@@ -733,9 +729,9 @@ document.getElementById('yt-container').addEventListener('click',function(){
 let pmCurrentStep = 1;
 
 const PM_DATES=[
-  {value:'2025-05-17',day:'17',month:'Mayo 2025',spots:'2 cupos'},
-  {value:'2025-05-24',day:'24',month:'Mayo 2025',spots:'4 cupos'},
-  {value:'2025-06-05',day:'05',month:'Jun 2025', spots:'4 cupos'},
+  {value:'2025-05-17',day:'17',month:'Mayo 2025'},
+  {value:'2025-05-24',day:'24',month:'Mayo 2025'},
+  {value:'2025-06-05',day:'05',month:'Jun 2025'},
 ];
 
 function pmRenderDateGrid(){
@@ -744,7 +740,6 @@ function pmRenderDateGrid(){
     <div class="pm-date-card${d.value===current?' selected':''}" onclick="pmSelectDate('${d.value}','${d.day} de ${d.month}',this)">
       <div class="pmd-day">${d.day}</div>
       <div class="pmd-month">${d.month}</div>
-      <div class="pmd-spots">${d.spots}</div>
     </div>`).join('');
 }
 
