@@ -617,8 +617,8 @@ footer{padding:60px 5% 36px;border-top:1px solid var(--bdr);text-align:center}
         <div class="month">Mayo 2026</div>
         <div class="day">08</div>
       </div>
-      <div class="date-card featured fi fi-d2" onclick="openPayModal('Mayo 17, 2026')" style="cursor:pointer" title="Seleccionar esta fecha">
-        <div class="date-tag-open">Disponible</div>
+      <div class="date-card fi fi-d2" style="opacity:.45;pointer-events:none">
+        <div class="date-tag-sold">Agotado</div>
         <div class="month">Mayo 2026</div>
         <div class="day">17</div>
       </div>
@@ -880,7 +880,6 @@ document.getElementById('yt-container').addEventListener('click',function(){
 let pmCurrentStep = 1;
 
 const PM_DATES=[
-  {value:'2026-05-17',day:'17',month:'Mayo 2026'},
   {value:'2026-05-24',day:'24',month:'Mayo 2026'},
   {value:'2026-06-05',day:'05',month:'Jun 2026'},
 ];
